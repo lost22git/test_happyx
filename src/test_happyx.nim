@@ -3,6 +3,7 @@ import std/sugar
 import std/sequtils
 import std/uri
 import std/options
+import std/json
 import std/jsonutils
 import std/oids
 import std/times
@@ -19,17 +20,17 @@ proc ok[T](data: Option[T]): Result[T] = Result[T](data: data, code: 0, errmsg: 
 proc err[T](code: int, errmsg: string): Result[T] = Result[T](data: none(T), code: code, errmsg: errmsg)
 
 # TODO: DateTime json ser/der
-# proc toJsonHook(dt: DateTime, opt = initToJsonOptions()): JsonNode =
-#   return newJString $dt
-#
-# proc fromJsonHook[DateTime](dt: var DateTime, jsonNode: JsonNode, opt = Joptions()) =
-#   dt = parse($jsonNode, "yyyy-MM-dd'T'HH:mm:sszzz", utc())
+proc toJsonHook(dt: DateTime, opt = initToJsonOptions()): JsonNode =
+  return newJString $dt
 
-model Fighter:
+proc fromJsonHook[DateTime](dt: var DateTime, jsonNode: JsonNode, opt = Joptions()) =
+  dt = parse($jsonNode, "yyyy-MM-dd'T'HH:mm:sszzz", utc())
+
+type Fighter = object
   id: string
   name: string
   skill: string
-  createdAt: string
+  createdAt: DateTime
 
 model FighterCreate:
   name: string
@@ -40,14 +41,14 @@ proc toFighter(a: FighterCreate): Fighter =
     id: $genOid(),
     name: a.name,
     skill: a.skill,
-    createdAt: $now().utc
+    createdAt: now().utc
   )
 
 
 serve "127.0.0.1", 5000:
   var fighters = @[
-    Fighter(id: $genOid(), name: "隆", skill: "波动拳", createdAt: $now().utc),
-    Fighter(id: $genOid(), name: "肯", skill: "升龙拳", createdAt: $now().utc)
+    Fighter(id: $genOid(), name: "隆", skill: "波动拳", createdAt: now().utc),
+    Fighter(id: $genOid(), name: "肯", skill: "升龙拳", createdAt: now().utc)
   ]
   
   get "/text":
