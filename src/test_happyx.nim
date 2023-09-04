@@ -19,10 +19,11 @@ proc ok[T](data: Option[T]): Result[T] = Result[T](data: data, code: 0, errmsg: 
 
 proc err[T](code: int, errmsg: string): Result[T] = Result[T](data: none(T), code: code, errmsg: errmsg)
 
-# TODO: DateTime json ser/der
+# json serialize DateTime
 proc toJsonHook(dt: DateTime, opt = initToJsonOptions()): JsonNode =
   return newJString $dt
 
+# json deserialize DateTime
 proc fromJsonHook[DateTime](dt: var DateTime, jsonNode: JsonNode, opt = Joptions()) =
   dt = parse($jsonNode, "yyyy-MM-dd'T'HH:mm:sszzz", utc())
 
