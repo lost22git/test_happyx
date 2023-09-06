@@ -24,8 +24,8 @@ proc toJsonHook(dt: DateTime, opt = initToJsonOptions()): JsonNode =
   return newJString $dt
 
 # json deserialize DateTime
-proc fromJsonHook[DateTime](dt: var DateTime, jsonNode: JsonNode, opt = Joptions()) =
-  dt = parse($jsonNode, "yyyy-MM-dd'T'HH:mm:sszzz", utc())
+proc fromJsonHook(dt: var DateTime, jsonNode: JsonNode) =
+  dt = jsonNode.getStr().parse("yyyy-MM-dd'T'HH:mm:sszzz", utc())
 
 type Fighter = object
   id: string
@@ -74,19 +74,19 @@ serve "127.0.0.1", 5000:
     return ok(fighters).toJson
 
   get "/fighter/{id:string}/details": 
-    let found = fighters.filter(x => x.id == id)
+    let found = fighters.filterIt(it.id == id)
     if found.len == 0:
-      return ok[Fighter]().toJson 
+      return ok[Fighter]().toJson
     else:
       return ok(found[0]).toJson
   
   get "/fighter/{name:string}":
     let nameDecoded = decodeUrl(name)
-    let found = fighters.filter(x => x.name == nameDecoded)
+    let found = fighters.filterIt(it.name == nameDecoded)
     return ok(found).toJson
   
   delete "/fighter/{name:string}":
     let nameDecoded = decodeUrl(name) 
-    let removeFighter = fighters.filter(x => x.name == nameDecoded)
-    fighters = fighters.filter(x => x.name != nameDecoded)
+    let removeFighter = fighters.filterIt(it.name == nameDecoded)
+    fighters = fighters.filterIt(it.name != nameDecoded)
     return ok(removeFighter).toJson
