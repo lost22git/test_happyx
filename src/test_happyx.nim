@@ -22,20 +22,60 @@ type Result[T] = object
 proc ok[T](): Result[T] = Result[T](data: none(T), code: 200, errmsg: "")
 proc ok[T](data: T): Result[T] = Result[T](data: some(data), code: 0, errmsg: "")
 proc ok[T](data: Option[T]): Result[T] = Result[T](data: data, code: 0, errmsg: "")
-proc err[T](code: int, errmsg: string): Result[T] = Result[T](data: none(T), code: code, errmsg: errmsg)
+proc err[T](code: int, errmsg: string): Result[T] = Result[T](data: none(T),
+    code: code, errmsg: errmsg)
 
 
-type Fighter = object
+
+type StartupInfo = object
+  release_mode: bool
+  multi_threads: bool
+  pid: int
+  port: int
+
+proc initStartupInfo(port: int): StartupInfo =
+  when defined(release):
+    const release_mode = true
+  else:
+    const release_mode = false
+
+  when compileOption("threads"):
+    const multi_threads = true
+  else:
+    const multi_threads = false
+
+  result = StartupInfo(
+    release_mode: release_mode,
+    multi_threads: multi_threads,
+    pid: os.getCurrentProcessId(),
+    port: port
+  )
+
+const port = 5000
+let startupInfo = initStartupInfo(port)
+
+echo "Startup info: ", startupInfo
+
+
+
+
+
+type Fighter = ref object
   id: string
   name: string
   skill: seq[string]
   createdAt: DateTime
+  updatedAt: Option[DateTime] = none(DateTime)
 
 type FighterCreate = object
   name: string
   skill: seq[string]
 
-proc toFighter(a: FighterCreate): Fighter = 
+type FighterEdit = object
+  name: string
+  skill: seq[string]
+
+proc toFighter(a: FighterCreate): Fighter =
   return Fighter(
     id: $genOid(),
     name: a.name,
@@ -44,12 +84,12 @@ proc toFighter(a: FighterCreate): Fighter =
   )
 
 
-serve "127.0.0.1", 5000:
+serve "127.0.0.1", port:
   var fighters = @[
     Fighter(id: $genOid(), name: "隆", skill: @["波动拳"], createdAt: now().utc),
     Fighter(id: $genOid(), name: "肯", skill: @["升龙拳"], createdAt: now().utc)
   ]
-  
+
   get "/text":
     "Hello happyx"
 
@@ -62,17 +102,10 @@ serve "127.0.0.1", 5000:
       Http302,
       {"Location": "https://www.github.com"}.newHttpHeaders
     )
-  
+
   get "/fighter":
     return ok(fighters).toJson
 
-  get "/fighter/{id:string}/details": 
-    let found = fighters.filterIt(it.id == id)
-    if found.len > 0:
-      return ok(found[0]).toJson
-    else:
-      return ok[Fighter]().toJson
-  
   get "/fighter/{name:string}":
     let nameDecoded = decodeUrl(name)
     let found = fighters.filterIt(it.name == nameDecoded)
@@ -87,8 +120,22 @@ serve "127.0.0.1", 5000:
     let newFighter = fighterCreate.toFighter
     fighters.add newFighter
     return ok(newFighter).toJson
-  
-  delete "/fighter/{id:string}":
-    let removeFighter = fighters.filterIt(it.id == id)
-    fighters = fighters.filterIt(it.id != id)
+
+  put "/fighter":
+    let fighterEdit = try:
+        parseJson(req.body.get("")).jsonTo(FighterEdit)
+      except Exception:
+        req.answer("Bad request body", Http400)
+        return
+    var found = fighters.filterIt(it.name == fighterEdit.name)
+    if found.len > 0:
+      found[0].skill = fighterEdit.skill
+      found[0].updatedAt = now().utc.some
+      return ok(found[0]).toJson
+    return ok[Fighter]().toJson
+
+  delete "/fighter/{name:string}":
+    let nameDecoded = decodeUrl(name)
+    let removeFighter = fighters.filterIt(it.name == nameDecoded)
+    fighters = fighters.filterIt(it.name != nameDecoded)
     return ok(removeFighter).toJson
