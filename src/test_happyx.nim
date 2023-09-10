@@ -1,7 +1,7 @@
 import happyx
+import mapster
 import std/sugar
 import std/sequtils
-import std/uri
 import std/options
 import std/json
 import std/jsonutils
@@ -71,17 +71,17 @@ type FighterCreate = object
   name: string
   skill: seq[string]
 
+
 type FighterEdit = object
   name: string
   skill: seq[string]
 
-proc toFighter(a: FighterCreate): Fighter =
-  return Fighter(
-    id: $genOid(),
-    name: a.name,
-    skill: a.skill,
-    createdAt: now().utc
-  )
+proc toFighter(a: FighterCreate): Fighter {.map.} = 
+  result.id = $genOid()
+  result.createdAt = now().utc
+
+proc mergeFighter(a: var Fighter, b: FighterEdit) {.inplaceMap.} = 
+  a.updatedAt = now().utc.some
 
 
 serve "127.0.0.1", port:
@@ -94,7 +94,7 @@ serve "127.0.0.1", port:
     "Hello happyx"
 
   get "/json":
-    return {"msg": "Hello happyx"}
+    return { "msg": "Hello happyx" }
 
   get "/redirect":
     req.answer(
@@ -107,8 +107,7 @@ serve "127.0.0.1", port:
     return ok(fighters).toJson
 
   get "/fighter/{name:string}":
-    let nameDecoded = decodeUrl(name)
-    let found = fighters.filterIt(it.name == nameDecoded)
+    let found = fighters.filterIt(it.name == name)
     return ok(found).toJson
 
   post "/fighter":
@@ -129,13 +128,11 @@ serve "127.0.0.1", port:
         return
     var found = fighters.filterIt(it.name == fighterEdit.name)
     if found.len > 0:
-      found[0].skill = fighterEdit.skill
-      found[0].updatedAt = now().utc.some
+      mergeFighter(found[0], fighterEdit)
       return ok(found[0]).toJson
     return ok[Fighter]().toJson
 
   delete "/fighter/{name:string}":
-    let nameDecoded = decodeUrl(name)
-    let removeFighter = fighters.filterIt(it.name == nameDecoded)
-    fighters = fighters.filterIt(it.name != nameDecoded)
+    let removeFighter = fighters.filterIt(it.name == name)
+    fighters = fighters.filterIt(it.name != name)
     return ok(removeFighter).toJson
