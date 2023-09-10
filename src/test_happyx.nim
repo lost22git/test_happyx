@@ -1,5 +1,6 @@
 import happyx
 import mapster
+import stdx/sequtils
 import std/sugar
 import std/sequtils
 import std/options
@@ -107,7 +108,7 @@ serve "127.0.0.1", port:
     return ok(fighters).toJson
 
   get "/fighter/{name:string}":
-    let found = fighters.filterIt(it.name == name)
+    let found = fighters.findIt(it.name == name)
     return ok(found).toJson
 
   post "/fighter":
@@ -126,13 +127,13 @@ serve "127.0.0.1", port:
       except Exception:
         req.answer("Bad request body", Http400)
         return
-    var found = fighters.filterIt(it.name == fighterEdit.name)
-    if found.len > 0:
-      mergeFighter(found[0], fighterEdit)
-      return ok(found[0]).toJson
+    var found = fighters.findIt(it.name == fighterEdit.name)
+    if found != nil:
+      mergeFighter(found, fighterEdit)
+      return ok(found).toJson
     return ok[Fighter]().toJson
 
   delete "/fighter/{name:string}":
-    let removeFighter = fighters.filterIt(it.name == name)
+    let found = fighters.findIt(it.name == name)
     fighters = fighters.filterIt(it.name != name)
-    return ok(removeFighter).toJson
+    return ok(found).toJson
