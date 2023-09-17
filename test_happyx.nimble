@@ -10,4 +10,4 @@ bin           = @["test_happyx"]
 
 # Dependencies
 
-requires "nim >= 2.0.0", "happyx", "mapster >= 1.1.0", "stdx"
+requires "nim >= 2.0.0", "happyx", "mapster >= 1.1.0", "debby", "jsony"

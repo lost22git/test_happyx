@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-nimble run -d:release -d:beast
+nimble build -d:release -d:beast --mm:refc && ./test_happyx

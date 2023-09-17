@@ -1,18 +1,8 @@
 import happyx
 import mapster
-import stdx/sequtils
-import std/sugar
-import std/sequtils
-import std/options
-import std/json
-import std/jsonutils
-import std/oids
-import std/times
-
-# json serialize/deserialize DateTime
-proc toJsonHook(dt: DateTime, opt = initToJsonOptions()): JsonNode = % $dt
-proc fromJsonHook(dt: var DateTime, jsonNode: JsonNode) =
-  dt = jsonNode.getStr().parse("yyyy-MM-dd'T'HH:mm:sszzz", utc())
+import jsony
+import debby/sqlite
+import std/[options, times]
 
 
 type Result[T] = object
@@ -25,7 +15,6 @@ proc ok[T](data: T): Result[T] = Result[T](data: some(data), code: 0, errmsg: ""
 proc ok[T](data: Option[T]): Result[T] = Result[T](data: data, code: 0, errmsg: "")
 proc err[T](code: int, errmsg: string): Result[T] = Result[T](data: none(T),
     code: code, errmsg: errmsg)
-
 
 
 type StartupInfo = object
@@ -59,43 +48,68 @@ echo "Startup info: ", startupInfo
 
 
 
+# ------ jsony -------------------------
 
+proc dumpHook*(s: var string, v: DateTime) =
+  s.add '"'
+  s.add $v
+  s.add '"'
+proc parseHook*(s: string, i: var int, v: var DateTime) =
+  var str: string
+  parseHook(s, i, str)
+  v = parse(str, "yyyy-MM-dd'T'HH:mm:sszzz", utc())
+
+
+# ------ orm --------------------------
 
 type Fighter = ref object
-  id: string
+  id: int
   name: string
   skill: seq[string]
   createdAt: DateTime
-  updatedAt: Option[DateTime] = none(DateTime)
+  updatedAt: Option[DateTime] = none DateTime
+
+
+var fighters = @[
+  Fighter(name: "隆", skill: @["波动拳"], createdAt: now().utc),
+  Fighter(name: "肯", skill: @["升龙拳"], createdAt: now().utc)
+]
+
+let db = openDatabase("fighter.db")
+db.dropTableIfExists(Fighter)
+db.createTable(Fighter)
+db.createIndexIfNotExists(Fighter, "name")
+db.withTransaction:
+  db.insert(fighters)
+
+
+
+# ------ model -------------------------
 
 type FighterCreate = object
   name: string
   skill: seq[string]
 
-
 type FighterEdit = object
   name: string
   skill: seq[string]
 
-proc toFighter(a: FighterCreate): Fighter {.map.} = 
-  result.id = $genOid()
+proc toFighter(a: FighterCreate): Fighter {.map.} =
   result.createdAt = now().utc
 
-proc mergeFighter(a: var Fighter, b: FighterEdit) {.inplaceMap.} = 
+proc mergeFighter(a: var Fighter, b: FighterEdit) {.inplaceMap.} =
   a.updatedAt = now().utc.some
 
 
-serve "127.0.0.1", port:
-  var fighters = @[
-    Fighter(id: $genOid(), name: "隆", skill: @["波动拳"], createdAt: now().utc),
-    Fighter(id: $genOid(), name: "肯", skill: @["升龙拳"], createdAt: now().utc)
-  ]
 
+# ------ server ------------------------
+
+serve "127.0.0.1", port:
   get "/text":
     "Hello happyx"
 
   get "/json":
-    return { "msg": "Hello happyx" }
+    return {"msg": "Hello happyx"}
 
   get "/redirect":
     req.answer(
@@ -105,35 +119,46 @@ serve "127.0.0.1", port:
     )
 
   get "/fighter":
-    return ok(fighters).toJson
+    {.cast(gcsafe).}:
+      let all = db.filter(Fighter, 1 == 1)
+      return ok(all).toJson
 
   get "/fighter/{name:string}":
-    let found = fighters.findIt(it.name == name)
-    return ok(found).toJson
+    {.cast(gcsafe).}:
+      let found = db.filter(Fighter, it.name == name)
+      return ok(found).toJson
 
   post "/fighter":
     let fighterCreate = try:
-        parseJson(req.body.get("")).jsonTo(FighterCreate)
+        req.body.get("").fromJson(FighterCreate)
       except Exception:
         req.answer("Bad request body", Http400)
         return
     let newFighter = fighterCreate.toFighter
-    fighters.add newFighter
+    {.cast(gcsafe).}:
+      db.withTransaction:
+        db.insert(newFighter)
     return ok(newFighter).toJson
 
   put "/fighter":
     let fighterEdit = try:
-        parseJson(req.body.get("")).jsonTo(FighterEdit)
+        req.body.get("").fromJson(FighterEdit)
       except Exception:
         req.answer("Bad request body", Http400)
         return
-    var found = fighters.findIt(it.name == fighterEdit.name)
-    if found != nil:
-      mergeFighter(found, fighterEdit)
-      return ok(found).toJson
-    return ok[Fighter]().toJson
+    var found: seq[Fighter]
+    {.cast(gcsafe).}:
+      db.withTransaction:
+        found = db.filter(Fighter, it.name == fighterEdit.name)
+        for v in found.mitems():
+          mergeFighter(v, fighterEdit)
+          db.update(v)
+    return ok(found).toJson
 
   delete "/fighter/{name:string}":
-    let found = fighters.findIt(it.name == name)
-    fighters = fighters.filterIt(it.name != name)
+    var found: seq[Fighter]
+    {.cast(gcsafe).}:
+      db.withTransaction:
+        found = db.filter(Fighter, it.name == name)
+        db.delete(found)
     return ok(found).toJson
