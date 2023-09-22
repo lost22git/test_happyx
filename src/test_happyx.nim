@@ -105,11 +105,11 @@ proc mergeFighter(a: var Fighter, b: FighterEdit) {.inplaceMap.} =
 # ------ server ------------------------
 
 serve "127.0.0.1", port:
-  get "/text":
-    "Hello happyx"
+  get "/baseline/text":
+    return "lost"
 
-  get "/json":
-    return {"msg": "Hello happyx"}
+  get "/baseline/json":
+    return ok("lost").toJson
 
   get "/redirect":
     req.answer(
