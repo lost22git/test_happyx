@@ -104,6 +104,12 @@ proc mergeFighter(a: var Fighter, b: FighterEdit) {.inplaceMap.} =
 
 # ------ server ------------------------
 
+regCORS:
+  origins: ["*"]
+  methods: ["*"]
+  headers: ["*"]
+  credentials: true
+
 serve "127.0.0.1", port:
   get "/baseline/text":
     return "lost"
