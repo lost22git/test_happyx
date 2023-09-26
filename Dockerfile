@@ -1,0 +1,44 @@
+FROM nimlang/nim:2.0.0-alpine as builder
+
+WORKDIR /project
+
+ARG http_proxy=""
+
+RUN export HTTP_PROXY=${http_proxy} \
+  && export HTTPS_PROXY=${http_proxy}
+
+RUN git config --global http.proxy ${http_proxy} && \
+  git config --global https.proxy ${http_proxy}
+
+RUN apk add --update --no-cache --force-overwrite \
+  sqlite-dev \
+  sqlite-static
+
+COPY ./test_happyx.nimble ./
+
+RUN nimble install -d -y
+
+COPY . .
+
+RUN nimble build \ 
+  --mm:refc \
+  -d:beast \
+  -d:release \
+  -d:nimDebugDlOpen \
+  --dynlibOverride:sqlite3 \
+  --passL:/usr/lib/libsqlite3.a \
+  --passL:-static \
+  --verbose -y
+
+
+
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder --chmod=777 /project/test_happyx ./bin/
+COPY --from=builder /project/fighter.db ./
+
+EXPOSE 5000/tcp
+
+ENTRYPOINT ["./bin/test_happyx"]
