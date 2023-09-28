@@ -1,13 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-
-nim c --mm:refc -d:beast -d:release \
-  --cc:clang --clang.exe:zigcc --clang.linkerexe:zigcc \
-  --passC="-target x86_64-linux-musl" --passL="-target x86_64-linux-musl" \
-  --dynlibOverride:sqlite3 --passL:libsqlite3.a \
-  src/test_happyx.nim \
-  && mv src/test_happyx bin/test_happyx_release_zigcc
+nimble build --verbose --mm:refc -d:beast -d:release
 
 # ------ 使用 docker alpine 环境进行静态链接
 
