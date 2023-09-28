@@ -27,6 +27,7 @@ RUN nimble build \
   -d:nimDebugDlOpen \
   --dynlibOverride:sqlite3 \
   --passL:/usr/lib/libsqlite3.a \
+  --passL:-lpthread \
   --passL:-static \
   --verbose -y
 
@@ -36,7 +37,7 @@ FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder --chmod=777 /project/test_happyx ./bin/
+COPY --from=builder --chmod=777 /project/bin/test_happyx ./bin/
 COPY --from=builder /project/fighter.db ./
 
 EXPOSE 5000/tcp
