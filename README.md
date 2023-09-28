@@ -12,6 +12,38 @@ TODO: Write installation instructions here
 
 ## Usage
 
+### zig cc
+
+- write a shell script and copy to /usr/local/bin
+
+zigcc content
+
+```shell
+#!/usr/bin/env bash
+
+zig cc $@
+
+```
+
+```shell
+cp zigcc /usr/local/bin
+```
+
+- build app with zigcc
+
+```shell
+nimble zigcc
+
+```
+
+- run app
+
+```shell
+./bin/test_happyx_release_zigcc
+```
+
+### Docker
+
 - build docker image `test-happyx`
 
 ```shell
