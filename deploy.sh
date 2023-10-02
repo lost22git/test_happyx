@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-nimble build --verbose --mm:refc -d:beast -d:release
+nimble build --verbose --mm:refc -d:beast -d:release && ./bin/test_happyx
 
 # ------ 使用 docker alpine 环境进行静态链接
 

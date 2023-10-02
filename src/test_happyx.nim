@@ -83,7 +83,6 @@ db.withTransaction:
   db.insert(fighters)
 
 
-
 # ------ model -------------------------
 
 type FighterCreate = object
@@ -136,7 +135,10 @@ serve "127.0.0.1", port:
 
   post "/fighter":
     let fighterCreate = try:
-        req.body.get("").fromJson(FighterCreate)
+        when defined(beast) or defined(httpx):
+          req.body.get("").fromJson(FighterCreate)
+        else:
+          req.body.fromJson(FighterCreate)
       except Exception:
         req.answer("Bad request body", Http400)
         return
@@ -148,7 +150,10 @@ serve "127.0.0.1", port:
 
   put "/fighter":
     let fighterEdit = try:
-        req.body.get("").fromJson(FighterEdit)
+        when defined(beast) or defined(httpx):
+          req.body.get("").fromJson(FighterEdit)
+        else:
+          req.body.fromJson(FighterEdit)
       except Exception:
         req.answer("Bad request body", Http400)
         return
