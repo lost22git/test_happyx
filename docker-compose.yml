@@ -1,0 +1,14 @@
+version: "3"
+
+services:
+  test-happyx:
+    build:
+      context: .
+      args:
+        http_proxy: ${HTTP_PROXY}
+    image: test-happyx
+    container_name: test-happyx 
+    ports:
+      - "5000:5000"
+
+# 默认创建并使用名为 ${COMPOSE_PROJECT_NAME}_default 的 bridge 网络
