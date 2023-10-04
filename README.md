@@ -62,6 +62,12 @@ docker network create -o com.docker.network.bridge.name=mnet mnet
 docker run -dit --name test-happyx --net mnet -p 5000:5000/tcp test-happyx
 ```
 
+### Docker compose
+
+```shell
+docker compose up -d
+```
+
 ## Development
 
 TODO: Write development instructions here

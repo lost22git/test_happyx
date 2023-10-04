@@ -21,10 +21,8 @@ RUN nimble install -d -y
 COPY . .
 
 RUN nimble build \ 
-  --mm:refc \
   -d:beast \
   -d:release \
-  -d:nimDebugDlOpen \
   --dynlibOverride:sqlite3 \
   --passL:/usr/lib/libsqlite3.a \
   --passL:-lpthread \
